@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>エッジリード専用文面生成ツール</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; min-height: 100vh; padding: 20px; }
+h1 { font-size: 18px; color: #1a237e; margin-bottom: 16px; }
+
+.tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.tab { padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; border: 2px solid #ddd; background: white; color: #999; transition: all 0.2s; }
+.tab.active { background: #1a237e; color: white; border-color: #1a237e; }
+
+.section { display: none; }
+.section.active { display: block; }
+
+.container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 980px; }
+.card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow-y: auto; max-height: 85vh; }
+.card-title { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; font-weight: bold; }
+
+.cbtn-wrap { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 16px; }
+.cbtn { padding: 5px 11px; border-radius: 14px; cursor: pointer; font-size: 11px; font-weight: bold; border: 2px solid #ddd; background: white; color: #999; transition: all 0.2s; white-space: nowrap; }
+.cbtn.active { background: #1a237e; color: white; border-color: #1a237e; }
+
+.field { margin-bottom: 11px; }
+.field.hidden { display: none; }
+.field label { display: block; font-size: 11px; color: #777; margin-bottom: 3px; }
+.field label .note { color: #e74c3c; font-size: 10px; margin-left: 4px; }
+.field input, .field textarea, .field select {
+  width: 100%; padding: 7px 10px; border: 1px solid #e0e0e0;
+  border-radius: 6px; font-size: 13px; outline: none; transition: border-color 0.2s; font-family: inherit;
+}
+.field input:focus, .field textarea:focus, .field select:focus { border-color: #1a237e; }
+.field textarea { resize: vertical; min-height: 56px; }
+
+.output-box {
+  background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px;
+  padding: 14px; font-size: 13px; line-height: 1.9; white-space: pre-wrap;
+  min-height: 300px; max-height: 60vh; overflow-y: auto;
+  color: #333; font-family: 'Courier New', monospace;
+}
+.placeholder { color: #ccc; font-size: 13px; text-align: center; padding: 60px 0; display: block; font-family: sans-serif; }
+.copy-btn { margin-top: 10px; width: 100%; padding: 9px; background: #1a237e; color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; transition: background 0.2s; }
+.copy-btn:hover { background: #283593; }
+.copy-btn.copied { background: #2e7d32; }
+.copy-btn:disabled { opacity: 0.4; cursor: not-allowed; background: #999; }
+.info-note { background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 10px 12px; font-size: 12px; color: #5d4037; line-height: 1.6; margin-bottom: 10px; }
+.warn-note { background: #ffebee; border: 1px solid #ef9a9a; border-radius: 6px; padding: 8px 12px; font-size: 12px; font-weight: bold; color: #c62828; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<h1>📄 エッジリード専用文面生成ツール</h1>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('shokai', this)">人物照合</div>
+  <div class="tab" onclick="switchTab('anken', this)">案件確認</div>
+  <div class="tab" onclick="switchTab('shinchoku', this)">進捗状況確認</div>
+</div>
+
+<!-- ========== 人物照合 ========== -->
+<div class="section active" id="section-shokai">
+  <div class="container">
+    <div class="card">
+      <div class="card-title">会社を選択</div>
+      <div class="cbtn-wrap" id="shokai-btns">
+        <div class="cbtn active" onclick="sel(this,'NT')">NT</div>
+        <div class="cbtn" onclick="sel(this,'OS')">OS</div>
+        <div class="cbtn" onclick="sel(this,'WIC')">WIC</div>
+        <div class="cbtn" onclick="sel(this,'BN')">BN</div>
+        <div class="cbtn" onclick="sel(this,'CO')">CO/COH</div>
+        <div class="cbtn" onclick="sel(this,'NK')">NK</div>
+        <div class="cbtn" onclick="sel(this,'TKG')">TKG</div>
+        <div class="cbtn" onclick="sel(this,'WT')">WT</div>
+        <div class="cbtn" onclick="sel(this,'TS')">TS</div>
+        <div class="cbtn" onclick="sel(this,'AIM人物')">AIM（人物）</div>
+        <div class="cbtn" onclick="sel(this,'東洋')">東洋ワーク</div>
+        <div class="cbtn" onclick="sel(this,'平山')">平山</div>
+        <div class="cbtn" onclick="sel(this,'新日本')">新日本</div>
+        <div class="cbtn" onclick="sel(this,'テクノ')">テクノサービス</div>
+      </div>
+
+      <div id="company-warn"></div>
+      <div id="company-note"></div>
+
+      <!-- 全フィールド（会社に応じて表示/非表示） -->
+      <div class="field hidden" id="f-tantou"><label>担当者名</label><input id="tantou" oninput="gen()"></div>
+      <div class="field hidden" id="f-cfName"><label>CF名</label><input id="cfName" oninput="gen()"></div>
+      <div class="field hidden" id="f-unit"><label>bu / ユニット</label><input id="unit" oninput="gen()"></div>
+      <div class="field" id="f-name"><label>氏名（漢字）<span class="note" id="name-note"></span></label><input id="iname" placeholder="例：田中　太郎" oninput="gen()"></div>
+      <div class="field" id="f-kana"><label>フリガナ<span class="note" id="kana-note"></span></label><input id="kana" placeholder="例：タナカ　タロウ" oninput="gen()"></div>
+      <div class="field hidden" id="f-gender"><label>性別</label><select id="gender" onchange="gen()"><option value="">選択</option><option>男性</option><option>女性</option></select></div>
+      <div class="field" id="f-birth"><label>生年月日</label><input id="birth" placeholder="例：1977/05/21" oninput="gen()"></div>
+      <div class="field hidden" id="f-zip"><label>郵便番号（ハイフンなし）</label><input id="zip" placeholder="例：1234567" oninput="gen()"></div>
+      <div class="field hidden" id="f-address"><label>住所</label><input id="address" placeholder="例：〇〇県〇〇市〇〇町1-1-1" oninput="gen()"></div>
+      <div class="field" id="f-phone"><label>電話番号<span class="note" id="phone-note"></span></label><input id="phone" placeholder="例：090-7531-0066" oninput="gen()"></div>
+      <div class="field hidden" id="f-email"><label>メールアドレス<span class="note" id="email-note"></span></label><input id="email" placeholder="例：abc@example.com" oninput="gen()"></div>
+      <div class="field hidden" id="f-kyoten"><label id="kyoten-label">拠点</label><input id="kyoten" oninput="gen()"></div>
+      <div class="field hidden" id="f-nyuryo"><label>入寮/通勤・通勤手段</label><input id="nyuryo" oninput="gen()"></div>
+      <div class="field hidden" id="f-jugyoStatus"><label>就業状況</label><input id="jugyoStatus" oninput="gen()"></div>
+      <div class="field hidden" id="f-seizoExp"><label>製造経験</label><input id="seizoExp" oninput="gen()"></div>
+      <div class="field hidden" id="f-shinbun"><label>身分証</label><input id="shinbun" oninput="gen()"></div>
+      <div class="field hidden" id="f-kiboAnken"><label>希望案件</label><input id="kiboAnken" oninput="gen()"></div>
+      <div class="field hidden" id="f-kiboArea"><label>希望エリア</label><input id="kiboArea" oninput="gen()"></div>
+      <div class="field hidden" id="f-startTime"><label>就業開始時期</label><input id="startTime" oninput="gen()"></div>
+      <div class="field hidden" id="f-tattoo"><label>タトゥー/刺青</label><input id="tattoo" placeholder="例：なし" oninput="gen()"></div>
+      <div class="field hidden" id="f-kioh"><label>既往歴</label><input id="kioh" placeholder="例：なし" oninput="gen()"></div>
+      <div class="field hidden" id="f-workwear"><label>作業着サイズ</label><input id="workwear" placeholder="例：M" oninput="gen()"></div>
+      <div class="field hidden" id="f-concerns"><label>懸念点 <span class="note">※必須</span></label><textarea id="concerns" oninput="gen()"></textarea></div>
+      <div class="field hidden" id="f-ankenNo"><label>案件NO（希望なしは空欄）</label><input id="ankenNo" placeholder="例：000A" oninput="gen()"></div>
+      <div class="field hidden" id="f-wtFactory"><label>工場名（希望なしは空欄）</label><input id="wtFactory" oninput="gen()"></div>
+      <div class="field hidden" id="f-kiboFactory"><label id="kiboFactory-label">希望工場名・求人No</label><input id="kiboFactory" oninput="gen()"></div>
+      <div class="field hidden" id="f-kyujinNo"><label>求人番号（任意）</label><input id="kyujinNo" oninput="gen()"></div>
+      <div class="field hidden" id="f-shitenBlock"><label>支店ブロック</label><input id="shitenBlock" oninput="gen()"></div>
+      <div class="field hidden" id="f-eigyoKyoten"><label>営業所拠点</label><input id="eigyoKyoten" oninput="gen()"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">生成された文面</div>
+      <div class="output-box" id="out-shokai"><span class="placeholder">← 会社を選択して入力してください</span></div>
+      <button class="copy-btn" onclick="cp('out-shokai',this)">📋 コピー</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 案件確認 ========== -->
+<div class="section" id="section-anken">
+  <div class="container">
+    <div class="card">
+      <div class="card-title">会社を選択</div>
+      <div class="cbtn-wrap" id="anken-btns">
+        <div class="cbtn active" onclick="selA(this,'NT')">NT</div>
+        <div class="cbtn" onclick="selA(this,'OS')">OS</div>
+        <div class="cbtn" onclick="selA(this,'WIC')">WIC</div>
+        <div class="cbtn" onclick="selA(this,'BN')">BN</div>
+        <div class="cbtn" onclick="selA(this,'CO')">CO/COH</div>
+        <div class="cbtn" onclick="selA(this,'NK')">NK</div>
+        <div class="cbtn" onclick="selA(this,'TKG')">TKG</div>
+        <div class="cbtn" onclick="selA(this,'WT')">WT</div>
+        <div class="cbtn" onclick="selA(this,'TS')">TS</div>
+        <div class="cbtn" onclick="selA(this,'AIM案件')">AIM（案件）</div>
+        <div class="cbtn" onclick="selA(this,'東洋')">東洋ワーク</div>
+        <div class="cbtn" onclick="selA(this,'平山')">平山</div>
+        <div class="cbtn" onclick="selA(this,'新日本')">新日本</div>
+        <div class="cbtn" onclick="selA(this,'テクノ')">テクノサービス</div>
+      </div>
+      <div class="field"><label>案件名（工場名・企業名など）</label><input id="a-anken" placeholder="例：TOTOファインセラミックス 株式会社 本社 中津工場" oninput="genA()"></div>
+      <div class="field"><label>案件No.</label><input id="a-no" placeholder="例：136532" oninput="genA()"></div>
+      <div class="field"><label>確認内容</label><textarea id="a-body" placeholder="例：7月の女性枠数と入社スケジュール、入寮スケジュールご教示ください" oninput="genA()" style="min-height:80px"></textarea></div>
+    </div>
+    <div class="card">
+      <div class="card-title">生成された文面</div>
+      <div class="output-box" id="out-anken"><span class="placeholder">← 入力すると自動生成されます</span></div>
+      <button class="copy-btn" onclick="cp('out-anken',this)">📋 コピー</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 進捗状況確認 ========== -->
+<div class="section" id="section-shinchoku">
+  <div class="container">
+    <div class="card">
+      <div class="card-title">会社を選択</div>
+      <div class="cbtn-wrap" id="shinchoku-btns">
+        <div class="cbtn active" onclick="selS(this,'NT')">NT</div>
+        <div class="cbtn" onclick="selS(this,'OS')">OS</div>
+        <div class="cbtn" onclick="selS(this,'WIC')">WIC</div>
+        <div class="cbtn" onclick="selS(this,'BN')">BN</div>
+        <div class="cbtn" onclick="selS(this,'CO')">CO/COH</div>
+        <div class="cbtn" onclick="selS(this,'NK')">NK</div>
+        <div class="cbtn" onclick="selS(this,'TKG')">TKG</div>
+        <div class="cbtn" onclick="selS(this,'WT')">WT</div>
+        <div class="cbtn" onclick="selS(this,'TS')">TS</div>
+        <div class="cbtn" onclick="selS(this,'AIM')">AIM</div>
+        <div class="cbtn" onclick="selS(this,'東洋')">東洋ワーク</div>
+        <div class="cbtn" onclick="selS(this,'平山')">平山</div>
+        <div class="cbtn" onclick="selS(this,'新日本')">新日本</div>
+        <div class="cbtn" onclick="selS(this,'テクノ')">テクノサービス</div>
+      </div>
+      <div class="field"><label>紹介（推薦日）</label><input id="p-date" placeholder="例：5/26" oninput="genS()"></div>
+      <div class="field"><label>求職者名</label><input id="p-name" placeholder="例：田中 太郎" oninput="genS()"></div>
+      <div class="field"><label>紹介先工場名</label><input id="p-factory" placeholder="例：株式会社SUBARU 群馬製作所" oninput="genS()"></div>
+      <div class="field"><label>現状</label><textarea id="p-status" placeholder="例：面接後連絡待ちです。工場見学日調整中と聞いております。次回連絡はいつ頃目安になりそうでしょうか" oninput="genS()"></textarea></div>
+    </div>
+    <div class="card">
+      <div class="card-title">生成された文面</div>
+      <div class="output-box" id="out-shinchoku"><span class="placeholder">← 入力すると自動生成されます</span></div>
+      <button class="copy-btn" onclick="cp('out-shinchoku',this)">📋 コピー</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const v = id => (document.getElementById(id)?.value || '').trim();
+
+function setOut(id, text, placeholder) {
+  const el = document.getElementById(id);
+  if (text) {
+    el.textContent = text;
+  } else {
+    el.innerHTML = `<span class="placeholder">${placeholder || '← 入力すると自動生成されます'}</span>`;
+  }
+}
+
+// ── 人物照合 state ──
+let co = 'NT';
+
+const FIELDS = {
+  'NT':     ['tantou','name','kana','birth','phone','email'],
+  'OS':     ['name','kana','birth','phone'],
+  'WIC':    ['name','kana','birth','phone'],
+  'BN':     ['name','kana','birth','phone'],
+  'CO':     ['name','kana','birth','phone','email'],
+  'NK':     ['name','kana','birth','phone'],
+  'TKG':    ['name','kana','birth','phone'],
+  'WT':     ['name','kana','birth','phone','ankenNo','wtFactory'],
+  'TS':     ['name','kana','gender','birth','zip','address','phone','email'],
+  'AIM人物':['name','kana','birth','phone'],
+  'AIM案件':['cfName','unit','name','kana','gender','birth','kyoten','phone','nyuryo','jugyoStatus','seizoExp','shinbun','kiboAnken','kiboArea','startTime','tattoo','kioh','workwear','concerns'],
+  '東洋':   ['name','kana','birth','phone','kyujinNo','kiboFactory'],
+  '平山':   ['kyoten','name','kana','birth','phone','kiboFactory'],
+  '新日本': ['name','kana','birth','phone','kiboFactory'],
+  'テクノ': ['shitenBlock','eigyoKyoten'],
+};
+
+const ALL_FIELDS = ['tantou','cfName','unit','name','kana','gender','birth','zip','address','phone','email','kyoten','nyuryo','jugyoStatus','seizoExp','shinbun','kiboAnken','kiboArea','startTime','tattoo','kioh','workwear','concerns','ankenNo','wtFactory','kiboFactory','kyujinNo','shitenBlock','eigyoKyoten'];
+
+function sel(el, company) {
+  document.querySelectorAll('#shokai-btns .cbtn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  co = company;
+  updateFields();
+  gen();
+}
+
+function updateFields() {
+  const show = FIELDS[co] || [];
+  ALL_FIELDS.forEach(f => {
+    const el = document.getElementById('f-' + f);
+    if (el) el.classList.toggle('hidden', !show.includes(f));
+  });
+
+  // 動的ラベル・プレースホルダー
+  document.getElementById('kana-note').textContent =
+    co === 'TKG' ? '※カタカナ必須' : co === 'TS' ? '※ひらがな' : '';
+  document.getElementById('phone-note').textContent =
+    (co === 'NT' || co === 'TS') ? '※ハイフンなし' : '';
+  document.getElementById('email-note').textContent =
+    (co === 'NT' || co === 'CO') ? '※任意' : '';
+  document.getElementById('iname').placeholder =
+    co === 'TS' ? '例：田中 太郎（半角スペース）' : '例：田中　太郎';
+  document.getElementById('kana').placeholder =
+    co === 'TS' ? '例：たなか たろう（ひらがな）' : '例：タナカ　タロウ';
+  if (document.getElementById('kyoten-label'))
+    document.getElementById('kyoten-label').textContent =
+      co === 'AIM案件' ? '居住地' : '拠点';
+
+  const WARNINGS = {
+    'TKG':    '※推薦前の照合必須',
+    'WT':     '※推薦前の人物照合必須',
+    'TS':     '※推薦前の照合必須',
+    'AIM人物':'※推薦前の照合必須',
+    '東洋':   '※推薦前の照合必須',
+    '平山':   '※推薦前の照合必須',
+    '新日本': '※推薦前の照合必須',
+  };
+  const warn = document.getElementById('company-warn');
+  const warnMsg = WARNINGS[co];
+  warn.innerHTML = warnMsg ? `<div class="warn-note">${warnMsg}</div>` : '';
+
+  const NOTES = {
+    'NT':   '・氏名・フリガナは全角スペースで区切る\n・電話番号はハイフンなし\n・携帯が停止されていてもその番号を入力\n・番号が不明な場合は「0」を入力\n・メールアドレスは任意',
+    'CO':   '・Jobuddyのチェックができないため送付できない可能性あり\n・Jobbuddy確認も必要な場合はメールアドレスも記載',
+    'TKG':  '・フリガナはカタカナ必須',
+    'TS':   '・氏名は半角スペースで区切る\n・フリガナはひらがな\n・郵便番号はハイフンなし',
+    'AIM案件': '・懸念点は必須記入',
+    'テクノ': '・質問する際は〈支店ブロック〉〈営業所拠点〉を必ず記載',
+  };
+  const note = document.getElementById('company-note');
+  const msg = NOTES[co];
+  note.innerHTML = msg
+    ? '<div class="info-note">' + msg.replace(/\n/g, '<br>') + '</div>'
+    : '';
+}
+
+function gen() {
+  const nm = v('iname'), kn = v('kana'), bd = v('birth'), ph = v('phone');
+  let text = '';
+
+  switch(co) {
+    case 'NT':
+      text = `NT\nお世話になっております。\n照合お願いします。\n\n【担当者名】${v('tantou')}\n\n【氏名】${nm}\n【フリガナ】${kn}\n【生年月日】${bd}\n【電話番号】${ph}\n【メールアドレス】${v('email')}`;
+      break;
+    case 'OS':
+      text = `OS\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${bd}\n${ph}`;
+      break;
+    case 'WIC':
+      text = `WIC\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${bd}\n${ph}`;
+      break;
+    case 'BN':
+      text = `BN\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${bd}\n${ph}`;
+      break;
+    case 'CO':
+      text = `COorCOH\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${bd}\n${ph}${v('email') ? '\n' + v('email') : ''}`;
+      break;
+    case 'NK':
+      text = `NK\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${bd}\n${ph}`;
+      break;
+    case 'TKG':
+      text = `TKG\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${bd}\n${ph}`;
+      break;
+    case 'WT':
+      text = `WT\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${bd}\n${ph}\n\n案件NO：${v('ankenNo') || '希望なし'}\n工場名：${v('wtFactory') || '希望なし'}`;
+      break;
+    case 'TS':
+      text = `TS\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${v('gender')}\n${bd}\n〒${v('zip')}\n${v('address')}\n${ph}\n${v('email')}`;
+      break;
+    case 'AIM人物':
+      text = `AIM\nお世話になっております。\n人物照合をお願いします。\n\n氏名：${nm}\nフリガナ：${kn}\n生年月日：${bd}\n電話番号：${ph}\n\nご確認の程、宜しくお願いいたします。`;
+      break;
+    case 'AIM案件':
+      text = `AIM【案件照合フォーマット】\nお世話になっております。\n下記候補者が出ましたが、まだご紹介の方は可能でしょうか？\n【CF名】${v('cfName')}\n【bu / ユニット】${v('unit')}\n【氏名】${nm}\n【フリガナ】${kn}\n【性別】${v('gender')}\n【生年月日】${bd}\n【居住地】${v('kyoten')}\n【電話番号】${ph}\n【入寮/通勤・通勤手段】${v('nyuryo')}\n【就業状況】${v('jugyoStatus')}\n【製造経験】${v('seizoExp')}\n【身分証】${v('shinbun')}\n【希望案件】${v('kiboAnken')}\n【希望エリア】${v('kiboArea')}\n【就業開始時期】${v('startTime')}\n【タトゥー/刺青】${v('tattoo')}\n【既往歴】${v('kioh')}\n【作業着サイズ】${v('workwear')}\n【懸念点】${v('concerns')}`;
+      break;
+    case '東洋':
+      text = `東洋ワーク\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${bd}\n${ph}${v('kyujinNo') ? '\n\n求人番号　' + v('kyujinNo') : ''}${v('kiboFactory') ? '\n就業先企業名　' + v('kiboFactory') : ''}\n\n※求人番号と就業先企業名を\n併記頂きますと、\nよりスムースで精度の\n高い照合が可能`;
+      break;
+    case '平山':
+      text = `平山\nお世話になっております。\n照合お願いします。\n\n【拠点】${v('kyoten')}\n\n・名前　${nm}\n・フリガナ　${kn}\n・生年月日　${bd}\n・電話番号　${ph}\n・希望工場名・求人No　${v('kiboFactory')}\n・ラコネ上紹介料　本部で埋めます\n\n紹介料も相違ないでしょうか。\nご確認よろしくお願いいたします。`;
+      break;
+    case '新日本':
+      text = `新日本\nお世話になっております。\n照合お願いします。\n\n・名前　${nm}\n・フリガナ　${kn}\n・生年月日　${bd}\n・電話番号　${ph}${v('kiboFactory') ? '\n・希望工場名　' + v('kiboFactory') : ''}`;
+      break;
+    case 'テクノ':
+      text = `【ご質問の際のご協力依頼】\n\nテクノサービス様へ採用条件などの\nご質問をする際下記二点必ず記載\n〈支店ブロック〉${v('shitenBlock') ? '：' + v('shitenBlock') : ''}\n〈営業所拠点〉${v('eigyoKyoten') ? '：' + v('eigyoKyoten') : ''}`;
+      break;
+  }
+
+  setOut('out-shokai', text);
+}
+
+// ── 進捗状況確認 ──
+let sco = 'NT';
+function selS(el, company) {
+  document.querySelectorAll('#shinchoku-btns .cbtn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  sco = company;
+  genS();
+}
+function genS() {
+  const date = v('p-date'), name = v('p-name'), factory = v('p-factory'), status = v('p-status');
+  setOut('out-shinchoku',
+    (date || name || factory || status)
+      ? `${sco}\n\nお世話になります。\n下記求職者様についてご確認となります。\n\n・紹介(推薦日) ${date}\n・求職者名 ${name}\n・紹介先工場名 ${factory}\n・現状 ${status}\n\n最新の進捗お伺いできますでしょうか。\n\nよろしくお願いいたします。`
+      : ''
+  );
+}
+
+// ── 案件確認 ──
+let aco = 'NT';
+function selA(el, company) {
+  document.querySelectorAll('#anken-btns .cbtn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  aco = company;
+  genA();
+}
+function genA() {
+  const anken = v('a-anken'), no = v('a-no'), body = v('a-body');
+  const ankenLine = `■${anken}${no ? '／ No.' + no : ''}`;
+  setOut('out-anken',
+    (anken || no || body)
+      ? `${aco}\n\nお世話になっております。\n下記の案件についての確認です。\n\n${ankenLine}\n${body}\n宜しくお願い致します。`
+      : ''
+  );
+}
+
+// ── コピー ──
+function cp(id, btn) {
+  const text = document.getElementById(id).textContent;
+  if (!text || text.includes('自動生成') || text.includes('準備中') || text.includes('選択して')) return;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✅ コピーしました！';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 コピー'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── タブ切替 ──
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('section-' + tab).classList.add('active');
+}
+
+// ── 初期化 ──
+updateFields();
+</script>
+</body>
+</html>
