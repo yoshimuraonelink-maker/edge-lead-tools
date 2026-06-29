@@ -85,7 +85,6 @@ h1 { font-size: 18px; color: #1a237e; margin-bottom: 16px; }
       <div id="company-warn"></div>
       <div id="company-note"></div>
 
-      <!-- 全フィールド（会社に応じて表示/非表示） -->
       <div class="field hidden" id="f-tantou"><label>担当者名</label><input id="tantou" oninput="gen()"></div>
       <div class="field hidden" id="f-cfName"><label>CF名</label><input id="cfName" oninput="gen()"></div>
       <div class="field hidden" id="f-unit"><label>bu / ユニット</label><input id="unit" oninput="gen()"></div>
@@ -242,7 +241,6 @@ function updateFields() {
     if (el) el.classList.toggle('hidden', !show.includes(f));
   });
 
-  // 動的ラベル・プレースホルダー
   document.getElementById('kana-note').textContent =
     co === 'TKG' ? '※カタカナ必須' : co === 'TS' ? '※ひらがな' : '';
   document.getElementById('phone-note').textContent =
@@ -277,6 +275,7 @@ function updateFields() {
     'TS':   '・氏名は半角スペースで区切る\n・フリガナはひらがな\n・郵便番号はハイフンなし',
     'AIM案件': '・懸念点は必須記入',
     'テクノ': '・質問する際は〈支店ブロック〉〈営業所拠点〉を必ず記載',
+    '東洋':  '・求人番号と就業先企業名を併記頂きますと、よりスムースで精度の高い照合が可能',
   };
   const note = document.getElementById('company-note');
   const msg = NOTES[co];
@@ -324,7 +323,7 @@ function gen() {
       text = `AIM【案件照合フォーマット】\nお世話になっております。\n下記候補者が出ましたが、まだご紹介の方は可能でしょうか？\n【CF名】${v('cfName')}\n【bu / ユニット】${v('unit')}\n【氏名】${nm}\n【フリガナ】${kn}\n【性別】${v('gender')}\n【生年月日】${bd}\n【居住地】${v('kyoten')}\n【電話番号】${ph}\n【入寮/通勤・通勤手段】${v('nyuryo')}\n【就業状況】${v('jugyoStatus')}\n【製造経験】${v('seizoExp')}\n【身分証】${v('shinbun')}\n【希望案件】${v('kiboAnken')}\n【希望エリア】${v('kiboArea')}\n【就業開始時期】${v('startTime')}\n【タトゥー/刺青】${v('tattoo')}\n【既往歴】${v('kioh')}\n【作業着サイズ】${v('workwear')}\n【懸念点】${v('concerns')}`;
       break;
     case '東洋':
-      text = `東洋ワーク\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${bd}\n${ph}${v('kyujinNo') ? '\n\n求人番号　' + v('kyujinNo') : ''}${v('kiboFactory') ? '\n就業先企業名　' + v('kiboFactory') : ''}\n\n※求人番号と就業先企業名を\n併記頂きますと、\nよりスムースで精度の\n高い照合が可能`;
+      text = `東洋ワーク\nお世話になっております。\n照合お願いします。\n\n${nm}\n${kn}\n${bd}\n${ph}${v('kyujinNo') ? '\n\n求人番号　' + v('kyujinNo') : ''}${v('kiboFactory') ? '\n就業先企業名　' + v('kiboFactory') : ''}`;
       break;
     case '平山':
       text = `平山\nお世話になっております。\n照合お願いします。\n\n【拠点】${v('kyoten')}\n\n・名前　${nm}\n・フリガナ　${kn}\n・生年月日　${bd}\n・電話番号　${ph}\n・希望工場名・求人No　${v('kiboFactory')}\n・ラコネ上紹介料　本部で埋めます\n\n紹介料も相違ないでしょうか。\nご確認よろしくお願いいたします。`;
